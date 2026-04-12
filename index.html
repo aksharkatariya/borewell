@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Borewell</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --yellow: #E8D46A; --yellow-chalky: rgba(255,255,255,0.08);
+      --ochre: #C8922A;
+      --ochre-light: #D9A93C;
+      --ochre-dark: #A67420;
+      --black: #111111;
+      --row-hover: #E2C94A;
+    }
+
+    body {
+      background-color: var(--yellow); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
+      color: var(--black);
+      font-family: 'IBM Plex Mono', monospace;
+      min-height: 100vh;
+      padding: 3rem 2rem 6rem;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--black);
+    }
+
+    h1 .underlined {
+      text-decoration: underline;
+      text-underline-offset: 6px;
+      text-decoration-thickness: 2px;
+    }
+
+    .subtitle {
+      margin-top: 0.75rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--ochre-dark);
+    }
+
+    /* ── Table wrapper ── */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1.5px solid var(--ochre-dark);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    /* ── Table head ── */
+    thead tr {
+      background: var(--ochre);
+      color: var(--black);
+    }
+
+    th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 500;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border-right: 1px solid var(--ochre-dark);
+      white-space: nowrap;
+    }
+
+    th:last-child { border-right: none; }
+
+    /* ── Table body ── */
+    tbody tr {
+      border-bottom: 1px solid var(--ochre);
+      transition: background 0.1s;
+    }
+
+    tbody tr:hover { background: var(--row-hover); }
+    tbody tr:last-child { border-bottom: none; }
+
+    td {
+      padding: 0.75rem 1rem;
+      vertical-align: top;
+      border-right: 1px solid var(--ochre);
+      line-height: 1.5;
+    }
+
+    td:last-child { border-right: none; }
+
+    /* ── Cell types ── */
+    .cell-title a {
+      color: var(--black);
+      text-decoration: none;
+      font-weight: 500;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .cell-title a:hover { text-decoration: underline; }
+
+    .cell-title .summary {
+      font-size: 0.7rem;
+      color: #444;
+      font-weight: 400;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border: 1px solid var(--ochre-dark);
+      border-radius: 2px;
+      font-size: 0.62rem;
+      letter-spacing: 0.05em;
+      margin: 0.1rem 0.1rem 0.1rem 0;
+      text-transform: lowercase;
+    }
+
+    .type-pill {
+      background: var(--ochre);
+      border-color: var(--ochre-dark);
+    }
+
+    .urgency-urgent    { background: #e05c2a; color: #fff; border-color: #c04a1f; }
+    .urgency-few_weeks { background: var(--ochre); border-color: var(--ochre-dark); }
+    .urgency-someday   { background: transparent; }
+    .urgency-evergreen { background: #4a7c3f; color: #fff; border-color: #3a6230; }
+
+    .status-unread    { font-weight: 500; }
+    .status-read      { color: #666; }
+    .status-archived  { color: #999; }
+
+    .read-time { white-space: nowrap; color: #444; }
+
+    .date-cell {
+      white-space: nowrap;
+      color: #555;
+      font-size: 0.7rem;
+    }
+
+    /* ── Empty / loading states ── */
+    .state-row td {
+      text-align: center;
+      padding: 3rem;
+      color: var(--ochre-dark);
+      letter-spacing: 0.08em;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+    }
+
+    /* ── Footer meta ── */
+    .meta {
+      margin-top: 1.25rem;
+      font-size: 0.65rem;
+      color: var(--ochre-dark);
+      letter-spacing: 0.08em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ochre-dark);
+      margin-right: 6px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Bore<span class="underlined">well</span></h1>
+    <p class="subtitle">The idea lakehouse</p>
+  </header>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:35%">Title</th>
+          <th>Type</th>
+          <th>Topics</th>
+          <th>Time</th>
+          <th>Urgency</th>
+          <th>Status</th>
+          <th>Saved</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr class="state-row"><td colspan="7">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="meta">
+    <span><span class="dot"></span> live · refreshes every 30s</span>
+    <span id="item-count"></span>
+  </div>
+
+  <script>
+    const API = 'https://borewell-production.up.railway.app/items';
+
+    function formatDate(iso) {
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+    }
+
+    function urgencyClass(u) {
+      return 'pill urgency-' + (u || 'someday');
+    }
+
+    function render(items) {
+      const tbody = document.getElementById('table-body');
+      const count = document.getElementById('item-count');
+
+      if (!items.length) {
+        tbody.innerHTML = `<tr class="state-row"><td colspan="7">Nothing saved yet — drop a link in Telegram.</td></tr>`;
+        count.textContent = '';
+        return;
+      }
+
+      count.textContent = items.length + ' item' + (items.length !== 1 ? 's' : '');
+
+      tbody.innerHTML = items.map(item => `
+        <tr>
+          <td class="cell-title">
+            ${item.url
+              ? `<a href="${item.url}" target="_blank" rel="noopener">${item.title || item.url}</a>`
+              : `<span style="font-weight:500;display:block;margin-bottom:.25rem">${item.title || '—'}</span>`
+            }
+            ${item.summary ? `<span class="summary">${item.summary}</span>` : ''}
+          </td>
+          <td>${item.content_type ? `<span class="pill type-pill">${item.content_type}</span>` : '—'}</td>
+          <td>${(item.topics || []).map(t => `<span class="pill">${t}</span>`).join('') || '—'}</td>
+          <td class="read-time">${item.read_time_minutes ? item.read_time_minutes + ' min' : '—'}</td>
+          <td><span class="${urgencyClass(item.urgency)}">${(item.urgency || 'someday').replace('_', ' ')}</span></td>
+          <td class="status-${item.status || 'unread'}">${item.status || 'unread'}</td>
+          <td class="date-cell">${item.created_at ? formatDate(item.created_at) : '—'}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function fetchItems() {
+      try {
+        const res = await fetch(API);
+        const items = await res.json();
+        render(items);
+      } catch {
+        document.getElementById('table-body').innerHTML =
+          `<tr class="state-row"><td colspan="7">Could not reach server.</td></tr>`;
+      }
+    }
+
+    fetchItems();
+    setInterval(fetchItems, 30000);
+  </script>
+
+</body>
+</html>
