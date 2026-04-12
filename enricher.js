@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
 const CONTENT_TYPES = ['article', 'video', 'podcast', 'thread', 'tool', 'idea', 'paper', 'newsletter', 'recipe', 'other'];
 const URGENCY_OPTS  = ['urgent', 'few_weeks', 'someday', 'evergreen'];
