@@ -41,6 +41,27 @@ db.exec(`
 `);
 
 // ---------------------------------------------------------------------------
+// Migrations — add new columns if they don't exist
+// ---------------------------------------------------------------------------
+try {
+  db.exec(`ALTER TABLE items ADD COLUMN budget TEXT`);
+  console.log('[Migration] Added budget column');
+} catch (err) {
+  if (!err.message.includes('duplicate column name')) {
+    throw err;
+  }
+}
+
+try {
+  db.exec(`ALTER TABLE items ADD COLUMN done INTEGER DEFAULT 0`);
+  console.log('[Migration] Added done column');
+} catch (err) {
+  if (!err.message.includes('duplicate column name')) {
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Write — called by the webhook after Gemini enrichment
 // ---------------------------------------------------------------------------
 export function insertItem(item) {
