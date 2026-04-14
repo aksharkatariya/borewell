@@ -69,7 +69,13 @@ app.post('/webhook', async (req, res) => {
     // });
 
   } catch (err) {
-    console.error('Failed to process message:', err.message);
+    console.error('Failed to process message:', {
+      message: err.message,
+      url,
+      source,
+      timestamp: new Date().toISOString(),
+      stack: err.stack
+    });
   }
 });
 

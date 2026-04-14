@@ -39,6 +39,7 @@ async function fetchPageText(url) {
 // The core function. Takes the URL (if any) and the raw Telegram message,
 // fetches the page, and asks Gemini to classify and summarise everything.
 // Returns a plain object ready to be inserted into SQLite.
+// Includes retry logic with exponential backoff for transient failures.
 // ---------------------------------------------------------------------------
 export async function enrichContent(url, rawText) {
   const pageContent = url ? await fetchPageText(url) : '';
@@ -62,12 +63,48 @@ Return exactly this JSON shape:
   "urgency": <one of ${JSON.stringify(URGENCY_OPTS)}>
 }`;
 
-  const result = await model.generateContent(prompt);
-  let text = result.response.text().trim();
+  // Retry logic with exponential backoff
+  const maxRetries = 3;
+  let lastError;
 
-  // Gemini sometimes wraps the JSON in ```json ... ``` even when told not to.
-  // Strip those fences if present.
-  text = text.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[Gemini] Attempt ${attempt}/${maxRetries} to enrich content`);
+      const result = await model.generateContent(prompt);
+      let text = result.response.text().trim();
 
-  return JSON.parse(text);
+      // Gemini sometimes wraps the JSON in ```json ... ``` even when told not to.
+      // Strip those fences if present.
+      text = text.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+
+      const parsed = JSON.parse(text);
+      console.log(`[Gemini] Successfully enriched: "${parsed.title}"`);
+      return parsed;
+    } catch (err) {
+      lastError = err;
+      const isNetworkError = err.message?.includes('fetch failed') || err.message?.includes('network');
+      
+      if (isNetworkError && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+        console.warn(`[Gemini] Network error on attempt ${attempt}, retrying in ${delay}ms:`, err.message);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        console.error(`[Gemini] Error on attempt ${attempt}:`, {
+          message: err.message,
+          isNetworkError,
+          attempt,
+          maxRetries
+        });
+        
+        // Check if API key is missing/invalid
+        if (err.message?.includes('API_KEY') || err.message?.includes('401') || err.message?.includes('403')) {
+          console.error('[Gemini] API key issue detected. Check GEMINI_API_KEY env var.');
+        }
+        
+        if (attempt === maxRetries) break;
+      }
+    }
+  }
+
+  throw new Error(`Failed to enrich content after ${maxRetries} retries: ${lastError?.message}`);
 }
