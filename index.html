@@ -157,6 +157,84 @@
       font-size: 0.7rem;
     }
 
+    .budget-cell {
+      white-space: nowrap;
+      color: #555;
+    }
+
+    .done-cell {
+      text-align: center;
+    }
+
+    .done-cell input[type="checkbox"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ── Filters ── */
+    .filters {
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-group label {
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ochre-dark);
+      font-weight: 500;
+    }
+
+    .filter-group select {
+      padding: 0.35rem 0.5rem;
+      border: 1px solid var(--ochre-dark);
+      background: white;
+      color: var(--black);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+
+    .filter-group input[type="text"] {
+      padding: 0.35rem 0.5rem;
+      border: 1px solid var(--ochre-dark);
+      background: white;
+      color: var(--black);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      border-radius: 2px;
+      width: 120px;
+    }
+
+    .filter-group button {
+      padding: 0.35rem 0.75rem;
+      border: 1px solid var(--ochre-dark);
+      background: transparent;
+      color: var(--black);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: background 0.1s;
+    }
+
+    .filter-group button:hover {
+      background: var(--yellow-chalky);
+    }
+
     /* ── Empty / loading states ── */
     .state-row td {
       text-align: center;
@@ -201,21 +279,50 @@
     <p class="subtitle">The idea lakehouse</p>
   </header>
 
+  <div class="filters">
+    <div class="filter-group">
+      <label>Topic:</label>
+      <input type="text" id="filter-topic" placeholder="e.g. design, AI">
+    </div>
+    <div class="filter-group">
+      <label>Status:</label>
+      <select id="filter-status">
+        <option value="">All</option>
+        <option value="unread">Unread</option>
+        <option value="read">Read</option>
+        <option value="archived">Archived</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Done:</label>
+      <select id="filter-done">
+        <option value="">All</option>
+        <option value="false">Not Done</option>
+        <option value="true">Done</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <button id="filter-reset">Reset</button>
+    </div>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th style="width:35%">Title</th>
+          <th style="width:30%">Title</th>
           <th>Type</th>
           <th>Topics</th>
           <th>Time</th>
           <th>Urgency</th>
+          <th>Budget</th>
+          <th>Done</th>
           <th>Status</th>
           <th>Saved</th>
         </tr>
       </thead>
       <tbody id="table-body">
-        <tr class="state-row"><td colspan="7">Loading...</td></tr>
+        <tr class="state-row"><td colspan="9">Loading...</td></tr>
       </tbody>
     </table>
   </div>
@@ -228,6 +335,13 @@
   <script>
     const API = 'https://borewell-production.up.railway.app/items';
 
+    // Current filter state
+    let filters = {
+      topic: '',
+      status: '',
+      done: ''
+    };
+
     function formatDate(iso) {
       const d = new Date(iso);
       return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
@@ -237,12 +351,36 @@
       return 'pill urgency-' + (u || 'someday');
     }
 
+    function buildQueryString() {
+      const params = new URLSearchParams();
+      if (filters.topic) params.append('topic', filters.topic);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.done) params.append('done', filters.done);
+      return params.toString() ? '?' + params.toString() : '';
+    }
+
+    async function toggleDone(itemId, currentDone) {
+      try {
+        const baseUrl = API.replace('/items', '');
+        const response = await fetch(`${baseUrl}/items/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ done: !currentDone })
+        });
+        if (response.ok) {
+          await fetchItems();
+        }
+      } catch (err) {
+        console.error('Failed to update done status:', err);
+      }
+    }
+
     function render(items) {
       const tbody = document.getElementById('table-body');
       const count = document.getElementById('item-count');
 
       if (!items.length) {
-        tbody.innerHTML = `<tr class="state-row"><td colspan="7">Nothing saved yet — drop a link in Telegram.</td></tr>`;
+        tbody.innerHTML = `<tr class="state-row"><td colspan="9">Nothing saved yet — drop a link in Telegram.</td></tr>`;
         count.textContent = '';
         return;
       }
@@ -262,6 +400,8 @@
           <td>${(item.topics || []).map(t => `<span class="pill">${t}</span>`).join('') || '—'}</td>
           <td class="read-time">${item.read_time_minutes ? item.read_time_minutes + ' min' : '—'}</td>
           <td><span class="${urgencyClass(item.urgency)}">${(item.urgency || 'someday').replace('_', ' ')}</span></td>
+          <td class="budget-cell">${item.budget || '—'}</td>
+          <td class="done-cell"><input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleDone('${item.id}', ${item.done})"></td>
           <td class="status-${item.status || 'unread'}">${item.status || 'unread'}</td>
           <td class="date-cell">${item.created_at ? formatDate(item.created_at) : '—'}</td>
         </tr>
@@ -270,14 +410,39 @@
 
     async function fetchItems() {
       try {
-        const res = await fetch(API);
+        const queryString = buildQueryString();
+        const res = await fetch(API + queryString);
         const items = await res.json();
         render(items);
       } catch {
         document.getElementById('table-body').innerHTML =
-          `<tr class="state-row"><td colspan="7">Could not reach server.</td></tr>`;
+          `<tr class="state-row"><td colspan="9">Could not reach server.</td></tr>`;
       }
     }
+
+    // Filter event listeners
+    document.getElementById('filter-topic').addEventListener('input', (e) => {
+      filters.topic = e.target.value;
+      fetchItems();
+    });
+
+    document.getElementById('filter-status').addEventListener('change', (e) => {
+      filters.status = e.target.value;
+      fetchItems();
+    });
+
+    document.getElementById('filter-done').addEventListener('change', (e) => {
+      filters.done = e.target.value;
+      fetchItems();
+    });
+
+    document.getElementById('filter-reset').addEventListener('click', () => {
+      filters = { topic: '', status: '', done: '' };
+      document.getElementById('filter-topic').value = '';
+      document.getElementById('filter-status').value = '';
+      document.getElementById('filter-done').value = '';
+      fetchItems();
+    });
 
     fetchItems();
     setInterval(fetchItems, 30000);

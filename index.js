@@ -82,11 +82,11 @@ app.post('/webhook', async (req, res) => {
 // ---------------------------------------------------------------------------
 // GET /items
 // The frontend calls this to fetch your saved items.
-// Supports optional query params: ?status=unread&urgency=urgent&topic=design
+// Supports optional query params: ?status=unread&urgency=urgent&topic=design&done=false
 // ---------------------------------------------------------------------------
 app.get('/items', (req, res) => {
-  const { status, urgency, content_type, topic } = req.query;
-  const items = getItems({ status, urgency, content_type, topic });
+  const { status, urgency, content_type, topic, done } = req.query;
+  const items = getItems({ status, urgency, content_type, topic, done });
   res.json(items);
 });
 

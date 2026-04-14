@@ -33,6 +33,8 @@ db.exec(`
     rating            INTEGER,
     explore_with      TEXT,
     notes             TEXT,
+    budget            TEXT,                -- budget allocation/constraint
+    done              INTEGER DEFAULT 0,   -- 0 = not done, 1 = done
     created_at        TEXT DEFAULT (datetime('now')),
     updated_at        TEXT DEFAULT (datetime('now'))
   )
@@ -62,7 +64,7 @@ export function insertItem(item) {
 // ---------------------------------------------------------------------------
 // Read — called by GET /items, supports optional filters from query params
 // ---------------------------------------------------------------------------
-export function getItems({ status, urgency, content_type, topic } = {}) {
+export function getItems({ status, urgency, content_type, topic, done } = {}) {
   let query  = 'SELECT * FROM items WHERE 1=1';
   const params = [];
 
@@ -71,6 +73,7 @@ export function getItems({ status, urgency, content_type, topic } = {}) {
   if (content_type) { query += ' AND content_type = ?';  params.push(content_type); }
   // Topic filter: check if the JSON array string contains this topic
   if (topic)        { query += ' AND topics LIKE ?';     params.push(`%"${topic}"%`); }
+  if (done !== undefined && done !== null) { query += ' AND done = ?'; params.push(done === 'true' ? 1 : 0); }
 
   query += ' ORDER BY created_at DESC';
 
@@ -82,6 +85,7 @@ export function getItems({ status, urgency, content_type, topic } = {}) {
     topics:         JSON.parse(r.topics || '[]'),
     tags:           JSON.parse(r.tags   || '[]'),
     is_inspiration: Boolean(r.is_inspiration),
+    done:           Boolean(r.done),
   }));
 }
 
@@ -92,7 +96,7 @@ export function getItems({ status, urgency, content_type, topic } = {}) {
 export function updateItem(id, fields) {
   const ALLOWED = [
     'status', 'urgency', 'tags', 'rating',
-    'is_inspiration', 'explore_with', 'notes', 'time_bound_until'
+    'is_inspiration', 'explore_with', 'notes', 'time_bound_until', 'budget', 'done'
   ];
 
   const toUpdate = Object.keys(fields).filter(k => ALLOWED.includes(k));
